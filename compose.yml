@@ -1,0 +1,29 @@
+services:
+  api:
+    build:
+      context: .
+      target: dev
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "postgresql+psycopg://taller:1234@db:5432/taller123"
+    depends_on:
+      - db
+
+  db:
+    image: postgres
+    restart: always
+    shm_size: 128mb
+    environment:
+      POSTGRES_PASSWORD: "1234"
+      POSTGRES_USER: taller
+      POSTGRES_DB: taller123
+    ports:
+      - "5432:5432"
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
