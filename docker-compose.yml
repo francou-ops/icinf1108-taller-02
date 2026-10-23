@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:latest  
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: smillanguir2026
+      POSTGRES_PASSWORD: cqrp.0979
+      POSTGRES_DB: Taller2
+    ports:
+      - "5432:5432"
+    
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - red-app
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: postgres_admin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: adminpassword
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    networks:
+      - red-app
+
+  api:
+    build: .
+    container_name: fastapi_api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://smillanguir2026:cqrp.0979@db:5432/Taller2
+    depends_on:
+      - db
+    networks:
+      - red-app
+
+volumes:
+  pgdata:
+
+networks:
+  red-app:
+    driver: bridge
