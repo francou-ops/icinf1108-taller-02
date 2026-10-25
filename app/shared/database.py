@@ -6,10 +6,12 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 # Ruta del archivo SQLite. Se puede sobreescribir con la variable de entorno
 # DB_PATH (por ejemplo, para apuntar a un volumen en Docker: /data/data.db).
-DB_PATH = os.getenv("DB_PATH", "data.db")
-DATABASE_URL = f"sqlite:///{DB_PATH}"
+# DB_PATH = os.getenv("DB_PATH", "data.db")
+# URL de la PostgreSQL segÃºn docker compose
+DATABASE_URL = os.environ["DATABASE_URL"]
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+# engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
