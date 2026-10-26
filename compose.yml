@@ -3,7 +3,7 @@ services:
     build:
       context: .
       target: dev
-    restart: always
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
@@ -13,7 +13,7 @@ services:
 
   db:
     image: postgres:18 # Antes fallaba con la ruta de volumes
-    restart: always
+    restart: unless-stopped
     shm_size: 128mb
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -26,7 +26,7 @@ services:
 
   adminer:
     image: adminer
-    restart: always
+    restart: unless-stopped
     ports:
       - "8080:8080"
     depends_on:
