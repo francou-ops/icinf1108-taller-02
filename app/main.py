@@ -6,7 +6,6 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.pets.pets_controller import router as pets_router
 from app.shared.api_response import envelope_middleware
-from app.shared.database import init_db
 from app.shared.exceptions import (
     generic_exception_handler,
     http_exception_handler,
@@ -20,12 +19,11 @@ def create_app() -> FastAPI:
         title="FastAPI CRUD Students & Pets",
         description=(
             "API de un CRUD para la entidad Student y sus mascotas (Pet) "
-            "con persistencia en SQLite"
+            "con persistencia en PostgreSQL"
         ),
         version="1.0",
     )
 
-    init_db()
 
     app.add_middleware(
         CORSMiddleware,
