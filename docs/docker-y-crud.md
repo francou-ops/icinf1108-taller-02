@@ -22,6 +22,16 @@ Se creó el estudiante Ana mediante `POST /api/students`; la respuesta fue `201`
 
 Se creó la mascota Luna mediante `POST /api/students/{studentId}/pets`, con ese ID de estudiante. La respuesta fue `201` y devolvió el ID `3465c52b-3dbb-4d09-b9d9-fb07b2c568cc`: [captura de la respuesta](evidencia/02-post-mascota-201.png).
 
+La consulta `GET /api/students/c8a7d7de-5f33-4dd3-bfa7-dc1d675f7d34` devolvió `200` con los datos de Ana: [captura de la respuesta](evidencia/06-get-estudiante-200.png).
+
+El cambio de edad de Ana mediante PATCH /api/students/{studentId} devolvió 200 y ge: 23: [captura de la respuesta](evidencia/07-patch-estudiante-200.png). Un GET posterior devolvió 200 y mantuvo ge: 23: [captura de la lectura](evidencia/08-get-edad-actualizada-200.png).
+
+Un POST /api/students con el correo de Ana y otro username devolvió 409 con rrors.email: [captura del conflicto](evidencia/09-email-duplicado-409.png).
+
+Un POST /api/students con ge: 10 devolvió 400 con rrors.age y el mensaje de edad mínima: [captura de validación](evidencia/10-edad-invalida-400.png).
+
+Un GET /api/students/00000000-0000-0000-0000-000000000000 devolvió 404 con Estudiante no encontrado: [captura del recurso inexistente](evidencia/11-estudiante-inexistente-404.png).
+
 ## Persistencia tras reiniciar contenedores
 
 Se ejecutaron:
@@ -36,8 +46,6 @@ Los tres servicios volvieron a quedar `Up`: [captura de la terminal](evidencia/0
 
 ## Pendiente de validar
 
-Faltan capturas o resultados registrados para GET, PATCH, DELETE, errores 400/404/409, borrado conjunto y rollback. El esquema actual fue creado por `init_db()` al iniciar la API; aún no demuestra migraciones versionadas ni una clave foránea real de `pets.studentId` a `students.id`.
+Faltan capturas o resultados registrados para DELETE, borrado conjunto y rollback. El esquema actual fue creado por `init_db()` al iniciar la API; aún no demuestra migraciones versionadas ni una clave foránea real de `pets.studentId` a `students.id`.
 
 Para la entrega final, repetir las pruebas sobre el código integrado y una base nueva creada con Alembic. No usar `docker compose down -v` sobre datos que se quieran conservar.
-
-
