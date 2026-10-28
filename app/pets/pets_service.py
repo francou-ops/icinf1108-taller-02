@@ -37,18 +37,13 @@ class PetsService:
             species=data.species,
             age=data.age,
         )
-        db.add(pet)
-
         try:
+            db.add(pet)
             db.flush()
             db.commit()
-            db.refresh(pet)
-        except IntegrityError:
+        except IntegrityError as err:
             db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Error de integridad al registrar la mascota",
-            )
+            self._handle_integrity_error(err)
         except Exception:
             db.rollback()
             raise
@@ -68,17 +63,12 @@ class PetsService:
         if data.age is not None:
             pet.age = data.age
 
-  
         try:
             db.flush()
             db.commit()
-            db.refresh(pet)
-        except IntegrityError:
+        except IntegrityError as err:
             db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Error de integridad al actualizar la mascota",
-            )
+            self._handle_integrity_error(err)
         except Exception:
             db.rollback()
             raise
@@ -89,7 +79,6 @@ class PetsService:
         pet = self.find_owned(db, student_id, pet_id)
         result = Pet.model_validate(pet)
 
-  
         try:
             db.delete(pet)
             db.flush()
@@ -100,6 +89,15 @@ class PetsService:
 
         return result
 
+    def _handle_integrity_error(self, err: IntegrityError) -> None:
+        sqlstate = getattr(err.orig, "sqlstate", None)
+        diag = getattr(err.orig, "diag", None)
+        constraint = getattr(diag, "constraint_name", None)
+        if sqlstate == "23505" and constraint == "pets_studentId_name_key":
+            raise conflict(
+                {"name": {"message": "Ya tienes una mascota con ese nombre"}}
+            ) from err
+        raise err
 
     def find_owned(self, db: Session, student_id: str, pet_id: str) -> PetModel:
         self.students_service.find_by_id(db, student_id)
