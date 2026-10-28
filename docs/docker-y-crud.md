@@ -32,6 +32,12 @@ Un POST /api/students con ge: 10 devolvió 400 con rrors.age y el mensaje de e
 
 Un GET /api/students/00000000-0000-0000-0000-000000000000 devolvió 404 con Estudiante no encontrado: [captura del recurso inexistente](evidencia/11-estudiante-inexistente-404.png).
 
+Un POST /api/students/{studentId}/pets intentando crear otra Luna para Ana devolvió 409 con rrors.name: [captura del conflicto](evidencia/12-mascota-duplicada-409.png).
+
+Se creó una segunda mascota de Ana, scubi du, mediante POST. La API devolvió 201 y el ID 454c986f-856f-4eb6-967a-c546908e7fe2: [captura de creación](evidencia/13-segunda-mascota-201.png).
+
+El DELETE de scubi du devolvió 200 y el ID esperado: [captura de eliminación](evidencia/14-delete-mascota-200.png). Un GET posterior devolvió 	otal: 1 y solo a Luna: [captura de la lista](evidencia/15-lista-mascotas-tras-delete.png).
+
 ## Persistencia tras reiniciar contenedores
 
 Se ejecutaron:
@@ -46,6 +52,6 @@ Los tres servicios volvieron a quedar `Up`: [captura de la terminal](evidencia/0
 
 ## Pendiente de validar
 
-Faltan capturas o resultados registrados para DELETE, borrado conjunto y rollback. El esquema actual fue creado por `init_db()` al iniciar la API; aún no demuestra migraciones versionadas ni una clave foránea real de `pets.studentId` a `students.id`.
+Faltan capturas o resultados registrados para el borrado conjunto del estudiante con sus mascotas y el rollback. El esquema actual fue creado por `init_db()` al iniciar la API; aún no demuestra migraciones versionadas ni una clave foránea real de `pets.studentId` a `students.id`.
 
 Para la entrega final, repetir las pruebas sobre el código integrado y una base nueva creada con Alembic. No usar `docker compose down -v` sobre datos que se quieran conservar.
