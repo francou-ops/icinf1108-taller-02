@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.shared.database import Base
@@ -12,7 +12,10 @@ class Pet(Base):
     __table_args__ = (UniqueConstraint("studentId", "name"),)
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
-    studentId: Mapped[str] = mapped_column(String)
+    studentId: Mapped[str] = mapped_column(
+        String, 
+        ForeignKey("students.id", name="fk_pets_student_id"),
+    )
     name: Mapped[str] = mapped_column(String)
     species: Mapped[str] = mapped_column(String)
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)
