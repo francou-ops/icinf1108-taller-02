@@ -2,108 +2,162 @@ from uuid import uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.pets.pet_model import Pet as PetModel
+from app.pets.pets_schemas import CreatePetDto, Pet, PetList, UpdatePetDto
 from app.shared.exceptions import conflict
-from app.students.student_model import Student as StudentModel
-from app.students.students_schemas import (
-    CreateStudentDto,
-    Student,
-    StudentList,
-    UpdateStudentDto,
-)
+from app.students.students_service import StudentsService, students_service
 
 
-class StudentsService:
-    def find_all(self, db: Session) -> StudentList:
-        students = db.scalars(
-            select(StudentModel).order_by(StudentModel.createdAt.desc())
+class PetsService:
+    def __init__(self, students: StudentsService) -> None:
+        self.students_service = students
+
+    def find_all_for_student(self, db: Session, student_id: str) -> PetList:
+        self.students_service.find_by_id(db, student_id)
+
+        pets = db.scalars(
+            select(PetModel)
+            .where(PetModel.studentId == student_id)
+            .order_by(PetModel.createdAt.desc())
         ).all()
 
-        return StudentList(
-            total=len(students),
-            items=[Student.model_validate(s) for s in students],
-        )
+        return PetList(total=len(pets), items=[Pet.model_validate(p) for p in pets])
 
-    def find_by_id(self, db: Session, student_id: str) -> Student:
-        return Student.model_validate(self._get(db, student_id))
+    def create(self, db: Session, student_id: str, data: CreatePetDto) -> Pet:
+        self.students_service.find_by_id(db, student_id)
+        self.assert_no_conflicts(db, student_id, data)
 
-    def create(self, db: Session, data: CreateStudentDto) -> Student:
-        self.assert_no_conflicts(db, data)
-
-        student = StudentModel(
+        pet = PetModel(
             id=str(uuid4()),
+            studentId=student_id,
             name=data.name,
-            username=data.username,
-            email=data.email,
+            species=data.species,
             age=data.age,
         )
-        db.add(student)
-        db.commit()
+        db.add(pet)
 
-        return Student.model_validate(student)
+        try:
+            db.flush()
+            db.commit()
+            db.refresh(pet)
+        except IntegrityError as err:
+            db.rollback()
 
-    def update(self, db: Session, student_id: str, data: UpdateStudentDto) -> Student:
-        student = self._get(db, student_id)
-        self.assert_no_conflicts(db, data, except_id=student_id)
+            sqlstate = getattr(err.orig, "sqlstate", None)
+            diag = getattr(err.orig, "diag", None)
+            constraint = getattr(diag, "constraint_name", None)
+            orig_msg = str(err.orig).lower() if err.orig else ""
+
+            if (sqlstate == "23505" and constraint == "pets_studentId_name_key") or (
+                "23505" in orig_msg or "pets_studentid_name_key" in orig_msg
+            ):
+                raise conflict(
+                    {"name": {"message": "Ya tienes una mascota con ese nombre"}}
+                ) from err
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Error de integridad de datos en la solicitud",
+            ) from err
+        except Exception:
+            db.rollback()
+            raise
+
+        return Pet.model_validate(pet)
+
+    def update(
+        self, db: Session, student_id: str, pet_id: str, data: UpdatePetDto
+    ) -> Pet:
+        pet = self.find_owned(db, student_id, pet_id)
+        self.assert_no_conflicts(db, student_id, data, except_id=pet_id)
 
         if data.name is not None:
-            student.name = data.name
-        if data.username is not None:
-            student.username = data.username
-        if data.email is not None:
-            student.email = data.email
+            pet.name = data.name
+        if data.species is not None:
+            pet.species = data.species
         if data.age is not None:
-            student.age = data.age
+            pet.age = data.age
 
-        db.commit()
+        try:
+            db.flush()
+            db.commit()
+            db.refresh(pet)
+        except IntegrityError as err:
+            db.rollback()
 
-        return Student.model_validate(student)
+            sqlstate = getattr(err.orig, "sqlstate", None)
+            diag = getattr(err.orig, "diag", None)
+            constraint = getattr(diag, "constraint_name", None)
+            orig_msg = str(err.orig).lower() if err.orig else ""
 
-    def delete(self, db: Session, student_id: str) -> Student:
-        student = self._get(db, student_id)
-        result = Student.model_validate(student)
+            if (sqlstate == "23505" and constraint == "pets_studentId_name_key") or (
+                "23505" in orig_msg or "pets_studentid_name_key" in orig_msg
+            ):
+                raise conflict(
+                    {"name": {"message": "Ya tienes una mascota con ese nombre"}}
+                ) from err
 
-        db.delete(student)
-        db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Error de integridad de datos en la solicitud",
+            ) from err
+        except Exception:
+            db.rollback()
+            raise
+
+        return Pet.model_validate(pet)
+
+    def delete(self, db: Session, student_id: str, pet_id: str) -> Pet:
+        pet = self.find_owned(db, student_id, pet_id)
+        result = Pet.model_validate(pet)
+
+        try:
+            db.delete(pet)
+            db.flush()
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
 
         return result
+
+    def find_owned(self, db: Session, student_id: str, pet_id: str) -> PetModel:
+        self.students_service.find_by_id(db, student_id)
+
+        pet = db.get(PetModel, pet_id)
+
+        if pet is None or pet.studentId != student_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Mascota no encontrada",
+            )
+
+        return pet
 
     def assert_no_conflicts(
         self,
         db: Session,
-        data: CreateStudentDto | UpdateStudentDto,
+        student_id: str,
+        data: CreatePetDto | UpdatePetDto,
         except_id: str | None = None,
     ) -> None:
-        errors: dict[str, dict[str, str]] = {}
+        if not data.name:
+            return
 
-        if data.email:
-            existing = db.scalar(
-                select(StudentModel).where(StudentModel.email == data.email)
+        existing = db.scalar(
+            select(PetModel).where(
+                PetModel.studentId == student_id,
+                PetModel.name == data.name,
             )
-            if existing and existing.id != except_id:
-                errors["email"] = {"message": "El correo electrónico ya está en uso"}
+        )
 
-        if data.username:
-            existing = db.scalar(
-                select(StudentModel).where(StudentModel.username == data.username)
-            )
-            if existing and existing.id != except_id:
-                errors["username"] = {"message": "El nombre de usuario ya está en uso"}
-
-        if errors:
-            raise conflict(errors)
-
-    def _get(self, db: Session, student_id: str) -> StudentModel:
-        student = db.get(StudentModel, student_id)
-
-        if student is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Estudiante no encontrado",
+        if existing and existing.id != except_id:
+            raise conflict(
+                {"name": {"message": "Ya tienes una mascota con ese nombre"}}
             )
 
-        return student
 
-
-students_service = StudentsService()
+pets_service = PetsService(students_service)
