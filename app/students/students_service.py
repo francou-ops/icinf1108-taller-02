@@ -1,9 +1,11 @@
 from uuid import uuid4
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.pets.pet_model import Pet as PetModel
 from app.shared.exceptions import conflict
 from app.students.student_model import Student as StudentModel
 from app.students.students_schemas import (
@@ -39,7 +41,17 @@ class StudentsService:
             age=data.age,
         )
         db.add(student)
-        db.commit()
+
+        try:
+            db.flush()
+            db.commit()
+            db.refresh(student)
+        except IntegrityError as err:
+            db.rollback()
+            self._handle_integrity_error(err)
+        except Exception:
+            db.rollback()
+            raise
 
         return Student.model_validate(student)
 
@@ -56,7 +68,16 @@ class StudentsService:
         if data.age is not None:
             student.age = data.age
 
-        db.commit()
+        try:
+            db.flush()
+            db.commit()
+            db.refresh(student)
+        except IntegrityError as err:
+            db.rollback()
+            self._handle_integrity_error(err)
+        except Exception:
+            db.rollback()
+            raise
 
         return Student.model_validate(student)
 
@@ -64,8 +85,16 @@ class StudentsService:
         student = self._get(db, student_id)
         result = Student.model_validate(student)
 
-        db.delete(student)
-        db.commit()
+        try:
+            db.execute(
+                delete(PetModel).where(PetModel.studentId == student_id)
+            )
+            db.delete(student)
+            db.flush()
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
 
         return result
 
@@ -93,6 +122,29 @@ class StudentsService:
 
         if errors:
             raise conflict(errors)
+
+    def _handle_integrity_error(self, err: IntegrityError) -> None:
+        orig_msg = str(err.orig).lower() if err.orig else ""
+
+        if "23505" in orig_msg or "unique" in orig_msg:
+            errors: dict[str, dict[str, str]] = {}
+            if "email" in orig_msg:
+                errors["email"] = {"message": "El correo electrónico ya está en uso"}
+            elif "username" in orig_msg:
+                errors["username"] = {"message": "El nombre de usuario ya está en uso"}
+
+            if errors:
+                raise conflict(errors)
+
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Registro duplicado en la base de datos",
+            )
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Error de integridad de datos en la solicitud",
+        )
 
     def _get(self, db: Session, student_id: str) -> StudentModel:
         student = db.get(StudentModel, student_id)
