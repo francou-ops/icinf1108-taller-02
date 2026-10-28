@@ -50,6 +50,10 @@ docker compose ps
 
 Los tres servicios volvieron a quedar `Up`: [captura de la terminal](evidencia/03-reinicio-compose.png). El usuario confirmó que Ana y Luna seguían guardadas tras el reinicio. La fila de Ana se ve en [esta captura de `students`](evidencia/04-ana-tras-reinicio.png). La fila de Luna y su `studentId` se ven en [esta captura de `pets`](evidencia/05-luna-tras-reinicio.png). El comando usado fue `down` sin `-v`, por lo que se conservó el volumen de PostgreSQL.
 
+## Colección Postman
+
+Importar `postman/students-collection.json` y ejecutar las carpetas `01 - Students`, `02 - Pets` y `03 - Errors` en ese orden. La creación del estudiante genera un username y correo únicos y guarda automáticamente los IDs usados en las peticiones siguientes. La carpeta `04 - Final integration` borra al estudiante creado por la colección y debe ejecutarse solamente después de integrar Alembic, la clave foránea y el borrado transaccional. No usar los IDs de las capturas anteriores como variables de la colección.
+
 ## Pendiente de validar
 
 Faltan capturas o resultados registrados para el borrado conjunto del estudiante con sus mascotas y el rollback. El esquema actual fue creado por `init_db()` al iniciar la API; aún no demuestra migraciones versionadas ni una clave foránea real de `pets.studentId` a `students.id`.

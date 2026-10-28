@@ -1,161 +1,596 @@
 {
-    "info": {
-        "name": "Students API",
-        "description": "CRUD en memoria para la entidad Student (NestJS). Reemplaza {{studentId}} manualmente o ejecuta 'Create Student' y copia el id de la respuesta.",
-        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  "info": {
+    "name": "Taller 2 - Students & Pets (FastAPI/PostgreSQL)",
+    "description": "Ejecutar en orden sobre una base de pruebas. Create Student guarda studentId, studentUsername y studentEmail; Create Pet guarda petId; Create temporary Pet guarda tempPetId. La eliminación del estudiante con mascota se valida solo después de integrar migraciones, FK y transacción. No incluye credenciales.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
     },
-    "variable": [
+    {
+      "key": "studentId",
+      "value": ""
+    },
+    {
+      "key": "studentUsername",
+      "value": ""
+    },
+    {
+      "key": "studentEmail",
+      "value": ""
+    },
+    {
+      "key": "petId",
+      "value": ""
+    },
+    {
+      "key": "tempPetId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Students",
+      "item": [
         {
-            "key": "baseUrl",
-            "value": "http://localhost:3000"
+          "name": "Create Student",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const suffix = Date.now().toString();",
+                  "pm.collectionVariables.set('studentUsername', 'ana_' + suffix);",
+                  "pm.collectionVariables.set('studentEmail', 'ana_' + suffix + '@example.com');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json().data;",
+                  "pm.collectionVariables.set('studentId', data.id);",
+                  "pm.collectionVariables.set('studentUsername', data.username);",
+                  "pm.collectionVariables.set('studentEmail', data.email);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/students",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ana Garcia\",\n  \"username\": \"{{studentUsername}}\",\n  \"email\": \"{{studentEmail}}\",\n  \"age\": 22\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Crea un estudiante nuevo con username y correo únicos para esta ejecución."
+          }
         },
         {
-            "key": "studentId",
-            "value": ""
-        }
-    ],
-    "item": [
-        {
-            "name": "Students CRUD",
-            "item": [
-                {
-                    "name": "Create Student",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"name\": \"Ana García\",\n    \"email\": \"ana@test.cl\",\n    \"age\": 22\n}"
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/api/students",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["api", "students"]
-                        }
-                    }
-                },
-                {
-                    "name": "List Students",
-                    "request": {
-                        "method": "GET",
-                        "url": {
-                            "raw": "{{baseUrl}}/api/students",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["api", "students"]
-                        }
-                    }
-                },
-                {
-                    "name": "Get Student by ID",
-                    "request": {
-                        "method": "GET",
-                        "url": {
-                            "raw": "{{baseUrl}}/api/students/{{studentId}}",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["api", "students", "{{studentId}}"]
-                        }
-                    }
-                },
-                {
-                    "name": "Update Student",
-                    "request": {
-                        "method": "PATCH",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"age\": 23\n}"
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/api/students/{{studentId}}",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["api", "students", "{{studentId}}"]
-                        }
-                    }
-                },
-                {
-                    "name": "Delete Student",
-                    "request": {
-                        "method": "DELETE",
-                        "url": {
-                            "raw": "{{baseUrl}}/api/students/{{studentId}}",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["api", "students", "{{studentId}}"]
-                        }
-                    }
-                }
-            ]
+          "name": "List Students",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/students"
+          }
         },
         {
-            "name": "Error Cases",
-            "item": [
-                {
-                    "name": "Create invalid age (400)",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"name\": \"Edad Invalida\",\n    \"email\": \"invalid-age@test.cl\",\n    \"age\": 10\n}"
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/api/students",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["api", "students"]
-                        }
-                    }
-                },
-                {
-                    "name": "Create duplicate email (409)",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"name\": \"Otro Estudiante\",\n    \"email\": \"ana@test.cl\",\n    \"age\": 20\n}"
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/api/students",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["api", "students"]
-                        }
-                    }
-                },
-                {
-                    "name": "Get non-existent (404)",
-                    "request": {
-                        "method": "GET",
-                        "url": {
-                            "raw": "{{baseUrl}}/api/students/00000000-0000-0000-0000-000000000000",
-                            "host": ["{{baseUrl}}"],
-                            "path": [
-                                "api",
-                                "students",
-                                "00000000-0000-0000-0000-000000000000"
-                            ]
-                        }
-                    }
+          "name": "Get Student",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/students/{{studentId}}"
+          }
+        },
+        {
+          "name": "Update Student",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Edad actualizada', function () { pm.expect(pm.response.json().data.age).to.eql(23); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/students/{{studentId}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"age\": 23\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-            ]
+              }
+            }
+          }
+        },
+        {
+          "name": "Get updated Student",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Edad persistida', function () { pm.expect(pm.response.json().data.age).to.eql(23); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/students/{{studentId}}"
+          }
         }
-    ]
+      ]
+    },
+    {
+      "name": "02 - Pets",
+      "item": [
+        {
+          "name": "Create Pet",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.collectionVariables.set('petId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/students/{{studentId}}/pets",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Luna\",\n  \"species\": \"Gato\",\n  \"age\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List Pets",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/students/{{studentId}}/pets"
+          }
+        },
+        {
+          "name": "Update Pet",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Mascota actualizada', function () { pm.expect(pm.response.json().data.age).to.eql(3); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/students/{{studentId}}/pets/{{petId}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"age\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get updated Pet in list",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Mascota persistida', function () { const items = pm.response.json().data.items; pm.expect(items.find(p => p.id === pm.collectionVariables.get('petId')).age).to.eql(3); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/students/{{studentId}}/pets"
+          }
+        },
+        {
+          "name": "Create temporary Pet",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.collectionVariables.set('tempPetId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/students/{{studentId}}/pets",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Toby\",\n  \"species\": \"Perro\",\n  \"age\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete temporary Pet",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/students/{{studentId}}/pets/{{tempPetId}}"
+          }
+        },
+        {
+          "name": "Check temporary Pet removed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Toby no aparece', function () { const items = pm.response.json().data.items; pm.expect(items.some(p => p.id === pm.collectionVariables.get('tempPetId'))).to.eql(false); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/students/{{studentId}}/pets"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Errors",
+      "item": [
+        {
+          "name": "Invalid Student age (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('Error en age', function () { pm.expect(pm.response.json().errors.age).to.exist; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/students",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Prueba Edad\",\n  \"username\": \"prueba_edad_01\",\n  \"email\": \"prueba_edad_01@example.com\",\n  \"age\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Duplicate Student email (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', function () { pm.response.to.have.status(409); });",
+                  "pm.test('Error en email', function () { pm.expect(pm.response.json().errors.email).to.exist; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/students",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Otra Persona\",\n  \"username\": \"otra_persona_01\",\n  \"email\": \"{{studentEmail}}\",\n  \"age\": 25\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Duplicate Student username (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', function () { pm.response.to.have.status(409); });",
+                  "pm.test('Error en username', function () { pm.expect(pm.response.json().errors.username).to.exist; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/students",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Otra Persona\",\n  \"username\": \"{{studentUsername}}\",\n  \"email\": \"otra_persona_01@example.com\",\n  \"age\": 25\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Duplicate Pet name (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', function () { pm.response.to.have.status(409); });",
+                  "pm.test('Error en name', function () { pm.expect(pm.response.json().errors.name).to.exist; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/students/{{studentId}}/pets",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Luna\",\n  \"species\": \"Gato\",\n  \"age\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Student not found (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/students/00000000-0000-0000-0000-000000000000"
+          }
+        },
+        {
+          "name": "Pet not found (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/students/{{studentId}}/pets/00000000-0000-0000-0000-000000000000"
+          }
+        },
+        {
+          "name": "Valid request after errors",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/students/{{studentId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Final integration",
+      "description": "Ejecutar solo tras integrar Alembic, la FK y el borrado transaccional. El estudiante de esta colección conserva una mascota para esta prueba.",
+      "item": [
+        {
+          "name": "Delete Student with Pet",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/students/{{studentId}}"
+          }
+        },
+        {
+          "name": "Check Student removed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/students/{{studentId}}"
+          }
+        }
+      ]
+    }
+  ]
 }
