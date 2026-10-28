@@ -1,7 +1,7 @@
 [project]
 name = "estudiantes-fastapi"
 version = "0.1.0"
-description = "CRUD de estudiantes y sus mascotas con FastAPI y SQLite"
+description = "CRUD de estudiantes y sus mascotas con FastAPI y PostgreSQL"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.13"
