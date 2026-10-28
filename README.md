@@ -242,4 +242,16 @@ No ejecutar la migración inicial de creación sobre una base antigua que ya ten
 
 La colección [Postman](postman/students-collection.json) incluye CRUD y casos 400, 404 y 409. Genera IDs de prueba automáticamente. Su carpeta de integración final elimina un estudiante con mascota; usarla sobre una base de pruebas después de aplicar las migraciones.
 
-El borrado de estudiante elimina primero sus mascotas y confirma ambos cambios en un solo `commit`; ante un error hace `rollback`. La rúbrica exige **verificar ese rollback ante un fallo**, por lo que la presencia del código no sustituye la prueba. Una prueba de integración debe forzar un error después del borrado de mascotas y comprobar en una nueva sesión que permanecen tanto el estudiante como sus mascotas.
+### Verificación manual de transacción y rollback
+
+El borrado de estudiante elimina primero sus mascotas y confirma ambos cambios en un solo `commit`; ante un error hace `rollback`.
+
+El 28 de octubre de 2026 se verificó este comportamiento con un estudiante y su mascota en la base de pruebas:
+
+1. Se creó un trigger temporal `BEFORE DELETE` sobre `students`, limitado al estudiante de prueba, que lanzaba la excepción `Fallo controlado para verificar rollback`. El borrado de mascotas se ejecutaba antes del fallo al borrar al estudiante.
+2. El DELETE de la API respondió [HTTP 500](docs/evidencia/16-error-500.png), y los logs confirmaron que la excepción provenía del trigger.
+3. Desde una conexión independiente en Adminer se comprobó que [el estudiante y su mascota seguían presentes](docs/evidencia/17-rollback-registros-conservados.png), verificando la reversión del borrado de mascotas.
+4. Se eliminaron el trigger y su función temporal. Al repetir el DELETE, la API respondió [HTTP 200](docs/evidencia/18-delete-200.png).
+5. Las consultas posteriores en Adminer confirmaron que [ambos registros habían sido eliminados](docs/evidencia/19-registros-eliminados.png).
+
+La prueba fue manual; las cuatro capturas documentan el fallo, los registros conservados y el borrado exitoso posterior.
