@@ -1,11 +1,12 @@
 # CRUD Students & Pets (FastAPI)
 
-Proyecto FastAPI que implementa un **CRUD** para la entidad `Student` y sus `Pet`, con **persistencia en SQLite** (a través de SQLAlchemy). Los datos se guardan en un archivo `data.db` local.
+Proyecto FastAPI que implementa un **CRUD** de estudiantes y mascotas con persistencia en PostgreSQL mediante SQLAlchemy. PostgreSQL, Adminer y la API se ejecutan con Docker Compose. Alembic gestiona la creación y los cambios del esquema.
 
 ## Tecnologías
 
 - Python 3.13
-- FastAPI + SQLAlchemy + SQLite
+- FastAPI + SQLAlchemy + PostgreSQL + Alembic
+- Docker Compose (PostgreSQL 18, Adminer y API)
 - HTML + JS + Tailwind CSS (frontend estático)
 
 ## Resumen funcional
@@ -18,7 +19,7 @@ La API expone operaciones CRUD completas sobre estudiantes y mascotas:
 - **Listar**: `GET /api/students`
 - **Buscar por id**: `GET /api/students/:id`
 - **Actualizar**: `PATCH /api/students/:id`
-- **Eliminar**: `DELETE /api/students/:id` (elimina también sus mascotas)
+- **Eliminar**: `DELETE /api/students/:id` (elimina también sus mascotas en una transacción)
 
 **Mascotas** — `/api/students/:studentId/pets`
 
@@ -151,7 +152,7 @@ Ambos casos comparten el **mismo esquema** para que el frontend los trate igual:
 }
 ```
 
-- `400 Bad Request`: cuando falla la validación. Los DTOs replican las reglas y mensajes de class-validator (NestJS) en español; el handler global ([`exceptions.py`](app/shared/exceptions.py)) convierte los errores al mapa `{ campo: { message } }` (si un campo falla varias reglas, los mensajes se concatenan con `", "`; las propiedades no permitidas devuelven `errors: {}`).
+- `400 Bad Request`: cuando falla la validación. Los DTOs usan mensajes en español; el handler global ([`exceptions.py`](app/shared/exceptions.py)) convierte los errores al mapa `{ campo: { message } }` (si un campo falla varias reglas, los mensajes se concatenan con `", "`; las propiedades no permitidas devuelven `errors: {}`).
 - `409 Conflict`: cuando se viola una restricción de unicidad. Los servicios lanzan una `HTTPException` con el mismo mapa `errors`, por lo que es indistinguible de una validación a nivel de estructura.
 
 ### Interpretación en el frontend
@@ -164,50 +165,81 @@ El cliente estático (`public/`) consume este estándar de forma uniforme:
 ## Contexto técnico
 
 - **Backend**: FastAPI
-- **Persistencia**: SQLite (`data.db`) con SQLAlchemy 2.0
+- **Persistencia**: PostgreSQL con SQLAlchemy 2.0 y psycopg
 - **Validación**: Pydantic v2
 - **Frontend**: archivos estáticos en `public/` (Alpine.js + Tailwind CSS + vanilla-sonner, vía CDN)
 - **Gestor de dependencias**: uv
 - **Documentación**: Swagger en `/docs`
 
-## Ejecución local
+## Requisitos
 
-1. Instalar dependencias:
+- Docker Desktop con el motor de contenedores Linux funcionando (en Windows, con WSL 2).
+- Python 3.13 y `uv` para ejecutar Alembic desde la máquina anfitriona.
+- Puertos locales 3000, 5432 y 8080 disponibles.
 
-    ```bash
-    make install
+## Primera puesta en marcha
+
+Los ejemplos siguientes usan PowerShell desde la raíz del proyecto. En Linux o Ubuntu se usan los mismos comandos de Docker y `uv`; para copiar un archivo se usa `cp` en lugar de `Copy-Item`.
+
+1. Preparar las variables locales. Copiar el ejemplo, editar `.env` y elegir una contraseña propia. No subir `.env` a Git:
+
+    ```powershell
+    Copy-Item .env.example .env
+    notepad .env
     ```
 
-    O directamente con uv:
+    Las variables son `POSTGRES_USER`, `POSTGRES_PASSWORD` y `POSTGRES_DB`. Si el volumen de PostgreSQL ya estaba inicializado, cambiar usuario o contraseña en `.env` no cambia las credenciales guardadas en ese volumen.
 
-    ```bash
+2. Levantar la base y Adminer. Esperar en los logs a `database system is ready to accept connections`:
+
+    ```powershell
+    docker compose config --quiet
+    docker compose up -d db adminer
+    docker compose logs --tail=30 db
+    ```
+
+3. Instalar las dependencias locales y preparar una URL de migración en un archivo **local** `.env.alembic`:
+
+    ```powershell
     uv sync
+    notepad .env.alembic
     ```
 
-2. Levantar el servidor en modo desarrollo:
+    Ejemplo del contenido, usando el usuario, contraseña y base de `.env`:
 
-    ```bash
-    make dev
+    ```dotenv
+    DATABASE_URL=postgresql+psycopg://taller:SU_CLAVE@localhost:5432/taller2
     ```
 
-    O usando uv:
+    `localhost:5432` es la dirección vista desde Windows o Ubuntu. La API dentro de Docker usa `db:5432`, configurado en `compose.yml`. Para simplificar la URL, usar una contraseña alfanumérica con guion bajo; otros caracteres deben codificarse en la URL. `.env.alembic` se mantiene fuera de Git.
 
-    ```bash
-    uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 3000
+4. Aplicar la migración **antes** de iniciar la API sobre una base vacía:
+
+    ```powershell
+    uv run --env-file .env.alembic alembic upgrade head
+    uv run --env-file .env.alembic alembic current
+    uv run --env-file .env.alembic alembic check
     ```
 
-La aplicación queda disponible en:
+    `current` debe indicar la revisión `head` y `check` no debe detectar cambios pendientes. La migración crea `students`, `pets`, su clave foránea y `alembic_version`. La API no aplica migraciones automáticamente.
 
-- `http://localhost:3000`
-- `http://localhost:3000/docs`
+5. Levantar la API y comprobar los servicios:
 
-> El archivo `data.db` se genera automáticamente en la raíz del proyecto y está ignorado por git.
+    ```powershell
+    docker compose up -d --build api
+    docker compose ps
+    ```
 
-## Comandos útiles
+    API: `http://localhost:3000`; Swagger: `http://localhost:3000/docs`; Adminer: `http://localhost:8080`. En Adminer elegir PostgreSQL, servidor `db` y los datos de `.env`.
 
-- `make install` — sincroniza dependencias con uv
-- `make dev` — arranca uvicorn en modo reload
-- `make lint` — ejecuta Ruff (con autocorrección)
-- `make format` — formatea el código con Ruff
-- `make format-check` — verifica el formato
-- `make clean` — elimina `.venv`, cachés y artefactos
+### Si la base ya tiene tablas
+
+No ejecutar la migración inicial de creación sobre una base antigua que ya tenga `students` y `pets`: fallaría por tablas existentes. Tampoco usar `alembic stamp head` como atajo, porque no agrega la clave foránea. Crear otra base vacía desde Adminer, apuntar `POSTGRES_DB` y `.env.alembic` a ella, aplicar `upgrade head` y luego levantar la API. Los datos de la base anterior no se trasladan solos. Una migración de datos existentes requiere un procedimiento de transición aparte.
+
+### Persistencia y pruebas manuales
+
+`docker compose down` detiene los contenedores y conserva el volumen `pgdata`; `docker compose down -v` elimina ese volumen y sus datos. Para comprobar persistencia, crear un estudiante y una mascota, ejecutar `down` y luego `up -d`, y verificar que siguen presentes.
+
+La colección [Postman](postman/students-collection.json) incluye CRUD y casos 400, 404 y 409. Genera IDs de prueba automáticamente. Su carpeta de integración final elimina un estudiante con mascota; usarla sobre una base de pruebas después de aplicar las migraciones.
+
+El borrado de estudiante elimina primero sus mascotas y confirma ambos cambios en un solo `commit`; ante un error hace `rollback`. La rúbrica exige **verificar ese rollback ante un fallo**, por lo que la presencia del código no sustituye la prueba. Una prueba de integración debe forzar un error después del borrado de mascotas y comprobar en una nueva sesión que permanecen tanto el estudiante como sus mascotas.
